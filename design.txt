@@ -1,0 +1,581 @@
+`timescale 1ns/1ps
+module alu #(parameter width=8,parameter c_w=4)(clk,rst,ce,mode,cmd,input_valid,opa,opb,cin,res,err,g,l,e,zero,overflow,cout,delay1);
+input clk,rst,ce,mode,cin;
+input [width-1:0] opa,opb;
+input [1:0] input_valid;
+input [3:0] cmd;
+output reg err,g,l,e,zero,overflow,cout;
+output reg [1:0] delay1;
+reg [width-1:0]opa1,opb1;
+integer j,i;
+reg [7:0]cnt=8'b0;
+reg [width-1:0] temp=0;
+output reg [2*width-1:0] res=0;        
+
+reg [width-1:0]opa2,opb2;
+always@(opa or opb or cmd or mode )begin
+    delay1=0;
+ end
+always@(posedge clk or posedge rst) begin
+if(rst==1'b1)begin
+    res<=0;
+    err<=0;
+    g<=0;
+    l<=0;
+    e<=0;
+    zero<=0;
+    overflow<=0;
+    cout<=0;
+    delay1<=0;
+end
+else begin
+    if(ce)begin
+        if(delay1>=1)begin
+	 err=0;
+         if(mode == 1)begin
+            case(cmd)
+                4'b0000:begin
+                    if(input_valid==2'b11)begin
+                        res<=opa+opb;
+                        cout<=res[width];
+                        overflow<=0;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;                        
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b0001:begin
+                    if(input_valid==2'b11)begin
+                        res<=opa-opb;
+                        overflow<=(opa<opb)?1:0;
+                        cout=0;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b0010:begin
+                    if(input_valid==2'b11)begin
+                        res=opa+opb+cin;
+                        cout=res[width];
+                        overflow=0;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b0011:begin
+                    if(input_valid==2'b11)begin
+                        res=opa-opb-cin;
+                        overflow=res[width];
+                        cout=0;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end   
+                4'b0100:begin
+                    if(input_valid==1'b01)begin
+                        res=opa+1'b1;
+                        cout=res[width];
+                        overflow<=0;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b0101:begin
+                    if(input_valid==1'b01)begin
+                        res=opa-1'b1;
+                        cout=0;
+                        overflow=res[width];
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end                                                                                                  
+                4'b0110:begin
+                    if(input_valid==1'b10)begin
+                        res=opb+1'b1;
+                        overflow=0;
+                        cout=res[width];
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end   
+                4'b0111:begin
+                    if(input_valid==1'b10)begin
+                        res<=opb-1'b1;
+                        overflow<=res[width];
+                        cout<=0;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b1000:begin
+                    if(input_valid==2'b11)begin
+                        e<=($signed(opa)==$signed(opb))?1:0;
+                        l<=($signed(opa)<$signed(opb))?1:0;
+                        g<=($signed(opa)>$signed(opb))?1:0;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end                                                                                         
+                4'b1001:begin
+                    if(input_valid==2'b11)begin
+                            if(delay1>=2) begin
+                            res=(opa+1)*(opb+1);
+                            cout=0;
+                            overflow=0;
+                            delay1<=0;
+                            end
+                           else begin
+                            delay1<=delay1+1;
+                            res<=res;
+                            err<=0;
+                            g<=0;
+                            e<=0;
+                            l<=0;
+                            cout<=0;
+                            overflow<=0;
+                            end
+                           end                        
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b1010:begin
+                    if(input_valid==2'b11)begin
+                            if(delay1>=2)begin
+                                opa1=opa<<1;
+                                res=opa1*opb;
+                                cout=0;
+                                overflow=0;
+                                delay1<=0;
+                                end
+                            else begin
+                            delay1<=delay1+1;
+                            res<=0;
+                            err<=0;
+                            g<=0;
+                            e<=0;
+                            l<=0;
+                            cout<=0;
+                            overflow<=0;
+                            end
+                            end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end  
+                4'b1011:begin
+                    if(input_valid==2'b11)begin
+                        res = $signed (opa) + $signed (opb);
+                        e<=($signed(opa)==$signed(opb))?1:0;
+                        l<=($signed(opa)<$signed(opb))?1:0;
+                        g<=($signed(opa)>$signed(opb))?1:0;
+                        overflow<=res[8];
+                        cout<=0;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b1100:begin
+                    if(input_valid==2'b11)begin
+                        res = $signed (opa) - $signed (opb);
+                        e<=($signed(opa)==$signed(opb))?1:0;
+                        l<=($signed(opa)<$signed(opb))?1:0;
+                        g<=($signed(opa)>$signed(opb))?1:0;
+                        cout =0;
+                        overflow =res[8];
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end                     
+                default: begin
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    endcase 
+                    end
+         else if(mode ==0) begin
+              case(cmd)
+                4'b0000:begin
+                    if(input_valid==2'b11)begin
+                        res<=opa&opb;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b0001:begin
+                    if(input_valid==2'b11)begin
+                        res<= ~(opa&opb);
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=0;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end  
+                4'b0010:begin
+                    if(input_valid==2'b11)begin
+                        res<=opa | opb;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b0011:begin
+                    if(input_valid==2'b11)begin
+                        res<= ~(opa | opb);
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b0100:begin
+                    if(input_valid==2'b11)begin
+                        res<= opa^opb;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b0101:begin
+                    if(input_valid==2'b11)begin
+                        res<= ~(opa^opb);
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b0110:begin
+                    if(input_valid==1'b01)begin
+                        res<= ~opa;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b0111:begin
+                    if(input_valid==1'b10)begin
+                        res<= ~opb;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end
+                4'b1000:begin
+                    if(input_valid==1'b01)begin
+                        res<= opa>>1;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end 
+                4'b1001:begin
+                    if(input_valid ==1'b01)begin
+                        opa1=opa<<1;
+                        res= {9'b0,opa1};
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end  
+                4'b1010:begin
+                    if(input_valid==1'b10)begin
+                        res<= {9'b0,opb>>1};
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end 
+                4'b1011:begin
+                    if(input_valid ==1'b10)begin
+                        res<= {9'b0,opb<<1};
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+                    end 
+                4'b1100:begin 
+                    if(input_valid == 2'b11)begin
+                        cnt=0;
+                        temp=8'b0;
+                        cnt=$clog2(width);//opb1 is used as temperory register to find number of bits we need to consider for
+                        j=opb%width;
+                        opa1=opa<<j;
+                        opb1=opa>>(width-j);
+                        res= {8'b0,opa1|opb1};
+                        temp[cnt+2]=1;
+                        err=(opb>temp)?1:0;
+                        delay1=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end 
+                    end
+                4'b1101:begin 
+                    if(input_valid == 2'b11)begin
+                        cnt=0;
+                        temp=8'b0;
+                        cnt=$clog2(width);//opb1 is used as temperory register to find number of bits we need to consider for
+                        j=opb%width;
+                        opa1=opa>>j;
+                        opb1=opa<<(width-j);
+                        res= {8'b0,opa1|opb1};
+                        temp[cnt+2]=1'b1;
+                        err=(opb>temp)?1:0;
+                        delay1<=0;
+                        end
+                    else begin
+                        $display("Inputs are not valid");
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end 
+                    end
+                default:begin
+                        res<=0;
+                        err<=1;
+                        g<=0;
+                        e<=0;
+                        l<=0;
+                        cout<=0;
+                        overflow<=0;
+                        end
+            endcase
+            end
+            end
+        else begin
+         delay1<=delay1+1;
+         res<=res;
+         err<=err;
+         g<=g;
+         e<=e;
+         l<=l;
+         cout<=cout;
+         overflow<=overflow;
+         end
+       end
+end
+end                                                                             
+endmodule

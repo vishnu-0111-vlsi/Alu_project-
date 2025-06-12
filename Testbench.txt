@@ -1,0 +1,177 @@
+`timescale 1ns/1ps
+`include "design.v"
+`include "reference.v"
+`define PASS 1'b1
+`define FAIL 1'b0
+module tb();
+parameter width=8;parameter c_width=4;
+reg [7:0] feature_Id=0;
+reg clk,rst,ce,mode,cin;
+reg [width-1:0] opa,opb;
+reg [1:0] input_valid;
+reg [3:0] cmd;
+wire [8:0] res_ref;
+wire [2*width-1:0] res,mult_res;
+wire err,g,l,e,zero,overflow,cout;
+wire err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref;
+wire [1:0] delay1;
+alu #(.width(width),.c_w(c_width)) dut (.clk(clk),.rst(rst),.ce(ce),.mode(mode),.cmd(cmd),.input_valid(input_valid),.opa(opa),.opb(opb),.cin(cin),.res(res),.err(err),.g(g),.l(l),.e(e),.zero(zero),.overflow(overflow),.cout(cout),.delay1(delay1));
+reference_model #(.WIDTH(8),.C_WIDTH(4)) r1 (.OPA(opa),.OPB(opb),.CIN(cin),.CLK(clk),.RST(rst),.IN_VALID(input_valid),.CMD(cmd),.CE(ce),.MODE(mode),.COUT(cout_ref),.OFLOW(overflow_ref),.RES(res_ref),.G(g_ref),.E(e_ref),.L(l_ref),.ERR(err_ref),.MUL_RES(mult_res)); 
+initial begin
+clk=0;
+forever #5 clk=~clk;
+end
+task automatic check(
+  input [7:0] feature_Id,
+  input [3:0] cmd,
+  input [8:0] res_ref,
+  input [15:0] res,
+  input [15:0] mult_res,
+  input err, g, l, e, overflow, cout,
+  input err_ref, g_ref, l_ref, e_ref, overflow_ref, cout_ref,
+  input mode
+);
+begin
+  if (err == err_ref && g == g_ref && l == l_ref && e == e_ref &&
+      overflow == overflow_ref && cout == cout_ref &&
+      (res[8:0] == res_ref || res == mult_res)) begin
+    $display("Feature ID %8b : PASS", feature_Id);
+  end else begin
+    $display("Feature ID %8b : FAIL", feature_Id);
+  end
+
+  $display("At time (%0t), Feature_ID = %8b, Input_valid = %2b, OPA = %8b, OPB = %8b, CMD = %4b, CIN = %1b, CE = %1b, MODE = %1b, expected_result = %9b, cout = %1b, Comparison_EGL = %3b, ov = %1b, err = %1b",
+           $time, feature_Id, input_valid, opa, opb, cmd, cin, ce, mode, res_ref, cout_ref, {e_ref, g_ref, l_ref}, overflow_ref, err_ref);
+  $display("Monitor: At time (%0t), RES = %9b, COUT = %1b, EGL = %3b, OFLOW = %1b, ERR = %1b",
+           $time, res[8:0], cout, {e, g, l}, overflow, err);
+end
+endtask
+/*
+task check();
+input [7:0] feature_Id;
+input [3:0] cmd;
+input [8:0] res_ref;
+input  [2*width-1:0] res,mult_res;
+input err,g,l,e,overflow,cout;
+input err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode;
+begin
+    if(err==err_ref && g==g_ref && l== l_ref && e==e_ref && overflow==overflow_ref && cout==cout_ref && (res[width:0] == res_ref || res ==mult_res))begin
+        $display("Feature ID %8b : PASS", feature_Id);
+        end
+    else begin
+    	$display("Feature ID %8b : FAIL", feature_Id);
+    end
+$display("At time (%0t), Feature_ID = %8b, Input_valid = %2b, OPA = %8b, OPB = %8b, CMD = %4b, CIN = %1b, CE = %1b, MODE = %1b, expected_result = %9b, cout = %1b, Comparison_EGL = %3b, ov = %1b, err = %1b",$time,feature_Id,input_valid,opa,opb,cmd,cin,ce,mode,res_ref,cout_ref,{e_ref,g_ref,l_ref},overflow_ref,err_ref);
+$display("Monitor: At time (%0t), RES = %9b, COUT = %1b, EGL = %3b, OFLOW = %1b, ERR = %1b",$time,res[8:0],cout,{e,g,l},overflow,err); 
+end
+endtask*/ 
+initial begin
+rst=1;
+#10 rst=0;
+ce=1;
+
+
+feature_Id=0;
+cmd=0;
+repeat(14)begin
+cmd=cmd+1;    
+repeat(10)begin
+#20;
+ce=1;
+input_valid=2'b11;mode=1;
+feature_Id=feature_Id+1;
+{opa,opb,cin}= $urandom%(2*width+c_width+1);
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+//$display("At time (%0t), Feature_ID = %8b, Input_valid = %2b, OPA = %8b, OPB = %8b, CMD = %4b, CIN = %1b, CE = %1b, MODE = %1b, expected_result = %9b, cout = %1b, Comparison_EGL = %3b, ov = %1b, err = %1b",$time,feature_Id,input_valid,opa,opb,cmd,cin,ce,mode,res_ref,cout_ref,{e_ref,g_ref,l_ref},overflow_ref,err_ref);
+//$display("Monitor: At time (%0t), RES = %9b, COUT = %1b, EGL = %3b, OFLOW = %1b, ERR = %1b",$time,res[8:0],cout,{e,g,l},overflow,err); 
+end
+end
+repeat(14)begin
+cmd=cmd+1;    
+repeat(10)begin
+#20;
+ce=1;
+input_valid=2'b11;mode=0;
+feature_Id=feature_Id+1;
+{opa,opb,cin}= $urandom%(2*width+c_width+1);
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+$display("At time (%0t), Feature_ID = %8b, Input_valid = %2b, OPA = %8b, OPB = %8b, CMD = %4b, CIN = %1b, CE = %1b, MODE = %1b, expected_result = %9b, cout = %1b, Comparison_EGL = %3b, ov = %1b, err = %1b",$time,feature_Id,input_valid,opa,opb,cmd,cin,ce,mode,res_ref,cout_ref,{e_ref,g_ref,l_ref},overflow_ref,err_ref);
+$display("Monitor: At time (%0t), RES = %9b, COUT = %1b, EGL = %3b, OFLOW = %1b, ERR = %1b",$time,res[8:0],cout,{e,g,l},overflow,err); 
+end
+end
+repeat(14)begin
+cmd=cmd+1;    
+repeat(10)begin
+#20;
+ce=1;
+input_valid=2'b11;mode=1;
+feature_Id=feature_Id+1;
+{opa,opb,cin}= $urandom%(2*width+c_width+1);
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+//$display("At time (%0t), Feature_ID = %8b, Input_valid = %2b, OPA = %8b, OPB = %8b, CMD = %4b, CIN = %1b, CE = %1b, MODE = %1b, expected_result = %9b, cout = %1b, Comparison_EGL = %3b, ov = %1b, err = %1b",$time,feature_Id,input_valid,opa,opb,cmd,cin,ce,mode,res_ref,cout_ref,{e_ref,g_ref,l_ref},overflow_ref,err_ref);
+//$display("Monitor: At time (%0t), RES = %9b, COUT = %1b, EGL = %3b, OFLOW = %1b, ERR = %1b",$time,res[8:0],cout,{e,g,l},overflow,err); 
+end
+end
+
+feature_Id=feature_Id+1; 
+mode=1;cmd=1011;input_valid=2'b10;opa=-120;opb=125;cin=0;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode); 
+feature_Id=feature_Id+1; 
+mode=1;cmd=1011;input_valid=2'b10;opa=-120;opb=125;cin=0;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode); 
+#20;feature_Id=feature_Id+1; 
+mode=1;cmd=1001;input_valid=2'b11;opa=1;opb=1;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode); 
+#30 feature_Id=feature_Id+1;mode=1;cmd=1010;input_valid=2'b11;opa=1;opb=1;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+#30 feature_Id=feature_Id+1;mode=1;cmd=1011;input_valid=2'b11;opa=1;opb=1;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+#30 feature_Id=feature_Id+1; mode=1;cmd=1100;input_valid=2'b11;opa=1;opb=1;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+#30 feature_Id=feature_Id+1;mode=1;cmd=1001;input_valid=2'b11;opa=1;opb=1;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+#30  mode=0;cin=0;opa=0;opb=0;cmd=0;
+repeat (2)begin
+mode=mode+1;
+repeat (2)begin
+cin=cin+1;
+repeat(15)begin
+cmd=cmd+1;
+#20;
+input_valid=2'b11;
+feature_Id=feature_Id+1;
+opa=8'b1111_1111;opb=8'b1111_1111;cin=0;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+//$display("At time (%0t), Feature_ID = %8b, Input_valid = %2b, OPA = %8b, OPB = %8b, CMD = %4b, CIN = %1b, CE = %1b, MODE = %1b, expected_result = %9b, cout = %1b, Comparison_EGL = %3b, ov = %1b, err = %1b",$time,feature_Id,input_valid,opa,opb,cmd,cin,ce,mode,res_ref,cout_ref,{e_ref,g_ref,l_ref},overflow_ref,err_ref);
+//$display("Monitor: At time (%0t), RES = %9b, COUT = %1b, EGL = %3b, OFLOW = %1b, ERR = %1b",$time,res[8:0],cout,{e,g,l},overflow,err); 
+end
+repeat(15)begin
+cmd=cmd+1;
+#20;
+input_valid=2'b11;
+feature_Id=feature_Id+1;
+opa=8'b0000_0000;opb=8'b0000_0000;cin=0;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+//$display("At time (%0t), Feature_ID = %8b, Input_valid = %2b, OPA = %8b, OPB = %8b, CMD = %4b, CIN = %1b, CE = %1b, MODE = %1b, expected_result = %9b, cout = %1b, Comparison_EGL = %3b, ov = %1b, err = %1b",$time,feature_Id,input_valid,opa,opb,cmd,cin,ce,mode,res_ref,cout_ref,{e_ref,g_ref,l_ref},overflow_ref,err_ref);
+//$display("Monitor: At time (%0t), RES = %9b, COUT = %1b, EGL = %3b, OFLOW = %1b, ERR = %1b",$time,res[8:0],cout,{e,g,l},overflow,err); 
+end
+end
+end
+repeat(15)begin
+mode=1;cmd=cmd+1;
+input_valid=2'b10;
+#20;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+input_valid=2'b00;
+#20;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+input_valid=2'b01;
+#20;
+ce=0;
+#20;
+check(feature_Id,cmd,res_ref,res,mult_res,err,g,l,e,overflow,cout,err_ref,g_ref,l_ref,e_ref,overflow_ref,cout_ref,mode);
+end
+$finish;
+end
+//initial $monitor("At time (%0t), Feature_ID = %8b, Input_valid = %2b, OPA = %8b, OPB = %8b, CMD = %4b, CIN = %1b, CE = %1b, MODE = %1b, expected_result = %9b, cout = %1b, Comparison_EGL = %3b, ov = %1b, err = %1b,Monitor: At time (%0t), RES = %9b, COUT = %1b, EGL = %3b, OFLOW = %1b, ERR = %1b",$time,feature_Id,input_valid,opa,opb,cmd,cin,ce,mode,res_ref,cout_ref,{e_ref,g_ref,l_ref},overflow_ref,err_ref,$time,res[8:0],cout,{e,g,l},overflow,err);
+endmodule
